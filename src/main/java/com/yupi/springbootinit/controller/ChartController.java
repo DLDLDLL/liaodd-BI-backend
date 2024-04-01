@@ -14,14 +14,17 @@ import com.yupi.springbootinit.constant.FileConstant;
 import com.yupi.springbootinit.constant.UserConstant;
 import com.yupi.springbootinit.exception.BusinessException;
 import com.yupi.springbootinit.exception.ThrowUtils;
+import com.yupi.springbootinit.manager.AiManager;
 import com.yupi.springbootinit.manager.CosManager;
 import com.yupi.springbootinit.model.dto.chart.*;
 import com.yupi.springbootinit.model.dto.file.UploadFileRequest;
 import com.yupi.springbootinit.model.entity.Chart;
 import com.yupi.springbootinit.model.entity.User;
 import com.yupi.springbootinit.model.enums.FileUploadBizEnum;
+import com.yupi.springbootinit.model.vo.BiResponse;
 import com.yupi.springbootinit.service.ChartService;
 import com.yupi.springbootinit.service.UserService;
+import com.yupi.springbootinit.utils.ChartUtils;
 import com.yupi.springbootinit.utils.ExcelUtils;
 import com.yupi.springbootinit.utils.SqlUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -56,6 +59,8 @@ public class ChartController {
     private UserService userService;
     @Resource
     private CosManager cosManager;
+    @Resource
+    private AiManager aiManager;
 
     private final static Gson GSON = new Gson();
 
@@ -234,72 +239,62 @@ public class ChartController {
      * @return
      */
     @PostMapping("/gen")
-    public BaseResponse<String> genChartByAi(@RequestPart("file") MultipartFile multipartFile,
+    public BaseResponse<BiResponse> genChartByAi(@RequestPart("file") MultipartFile multipartFile,
                                              GenChartByAiRequest genChartByAiRequest, HttpServletRequest request) {
         // 1. 获取参数
         String name = genChartByAiRequest.getName();
         String goal = genChartByAiRequest.getGoal();
         String chartType = genChartByAiRequest.getChartType();
 
-        // 2. 校验
+        // 2. 校验目标和名称
         ThrowUtils.throwIf(StringUtils.isBlank(goal), ErrorCode.PARAMS_ERROR,"目标为空");
         ThrowUtils.throwIf(StringUtils.isNotBlank(name)&&name.length()>100,ErrorCode.PARAMS_ERROR,"名称过长");
 
-        // 3. 用户输入 系统预设
+        // 3. 构造用户输入
         StringBuilder userInput = new StringBuilder();
-        userInput.append("你是一个数据分析师，接下来我会给你我的分析目标和原始数据，请告诉我分析结论。").append("\n");
-        userInput.append("分析目标：").append(goal).append("\n");
-
-        // 4. 转csv，数据提取和压缩
-        String result = ExcelUtils.excelToCsv(multipartFile);
-        userInput.append("数据：").append(result).append("\n");
-        return ResultUtils.success(userInput.toString());
-
-
-//        User loginUser = userService.getLoginUser(request);
-//        // 文件目录：根据业务、用户来划分
-//        String uuid = RandomStringUtils.randomAlphanumeric(8);
-//        String filename = uuid + "-" + multipartFile.getOriginalFilename();
-//        File file = null;
-//        try {
-//            // 返回可访问地址
-//            return ResultUtils.success(FileConstant.COS_HOST + filepath);
-//        } catch (Exception e) {
-//            log.error("file upload error, filepath = " + filepath, e);
-//            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "上传失败");
-//        } finally {
-//            if (file != null) {
-//                // 删除临时文件
-//                boolean delete = file.delete();
-//                if (!delete) {
-//                    log.error("file delete error, filepath = {}", filepath);
-//                }
-//            }
-//        }
-    }
-
-    /**
-     * 校验文件
-     *
-     * @param multipartFile
-     * @param fileUploadBizEnum 业务类型
-     */
-    private void validFile(MultipartFile multipartFile, FileUploadBizEnum fileUploadBizEnum) {
-        // 文件大小
-        long fileSize = multipartFile.getSize();
-        // 文件后缀
-        String fileSuffix = FileUtil.getSuffix(multipartFile.getOriginalFilename());
-        final long ONE_M = 1024 * 1024L;
-        if (FileUploadBizEnum.USER_AVATAR.equals(fileUploadBizEnum)) {
-            if (fileSize > ONE_M) {
-                throw new BusinessException(ErrorCode.PARAMS_ERROR, "文件大小不能超过 1M");
-            }
-            if (!Arrays.asList("jpeg", "jpg", "svg", "png", "webp").contains(fileSuffix)) {
-                throw new BusinessException(ErrorCode.PARAMS_ERROR, "文件类型错误");
-            }
+            //3.1 需求：目标 或 目标+类型
+        userInput.append("分析需求：").append("\n");
+        String userGoal=goal;
+        if(StringUtils.isNotBlank(chartType)){
+            userGoal+="，请使用"+chartType;
         }
-    }
+        userInput.append(userGoal).append("\n");
+            // 3.2 原始数据
+        userInput.append("原始数据：").append("\n");
+            // 3.3 转csv，数据提取和压缩
+        String csvData = ExcelUtils.excelToCsv(multipartFile);
+        userInput.append(csvData).append("\n");
 
+        // 4. 调用AI
+        long BIModelId = 1774721525321445378L;
+        String chatResult = aiManager.doChat(BIModelId,userInput.toString());
+        String[] split = chatResult.split("【【【【【");
+        if(split.length<3){
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR,"AI 生成错误");
+        }
+
+        // 5. 处理响应结果，将图表信息保存到数据库
+        String genChart = split[1].trim();
+        String genResult = split[2].trim();
+        String validGenChart = ChartUtils.getValidGenChart(genChart);
+        User loginUser = userService.getLoginUser(request);
+        Chart chart = new Chart();
+        chart.setName(name);
+        chart.setGoal(goal);
+        chart.setChartData(csvData);
+        chart.setChartType(chartType);
+        chart.setGenChart(validGenChart);
+        chart.setGetResult(genResult);
+        chart.setUserId(loginUser.getId());
+        boolean saveReslt = chartService.save(chart);
+        ThrowUtils.throwIf(!saveReslt,ErrorCode.SYSTEM_ERROR,"图表保存失败");
+
+        // 6. 将图表结果返回前端
+        BiResponse biResponse = new BiResponse();
+        biResponse.setGenChart(genChart);
+        biResponse.setGenResult(genResult);
+        return ResultUtils.success(biResponse);
+    }
 
     /**
      * 获取查询包装类
