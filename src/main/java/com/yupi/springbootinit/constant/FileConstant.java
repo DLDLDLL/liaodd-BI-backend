@@ -1,5 +1,8 @@
 package com.yupi.springbootinit.constant;
 
+import java.util.Arrays;
+import java.util.List;
+
 /**
  * 文件常量
  *
@@ -13,4 +16,14 @@ public interface FileConstant {
      * todo 需替换配置
      */
     String COS_HOST = "https://yupi.icu";
+
+    /**
+     * 文件大小不能超过1M
+     */
+    long FILE_MAX_SIZE=1 * 1024 * 1024L;
+
+    /**
+     * 文件后缀白名单
+     */
+    List<String> VALID_FILE_SUFFIX= Arrays.asList("xlsx","csv","xls","json");
 }

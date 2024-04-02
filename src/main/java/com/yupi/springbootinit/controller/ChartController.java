@@ -10,17 +10,15 @@ import com.yupi.springbootinit.common.DeleteRequest;
 import com.yupi.springbootinit.common.ErrorCode;
 import com.yupi.springbootinit.common.ResultUtils;
 import com.yupi.springbootinit.constant.CommonConstant;
-import com.yupi.springbootinit.constant.FileConstant;
 import com.yupi.springbootinit.constant.UserConstant;
 import com.yupi.springbootinit.exception.BusinessException;
 import com.yupi.springbootinit.exception.ThrowUtils;
 import com.yupi.springbootinit.manager.AiManager;
 import com.yupi.springbootinit.manager.CosManager;
+import com.yupi.springbootinit.manager.RedisLimiterManager;
 import com.yupi.springbootinit.model.dto.chart.*;
-import com.yupi.springbootinit.model.dto.file.UploadFileRequest;
 import com.yupi.springbootinit.model.entity.Chart;
 import com.yupi.springbootinit.model.entity.User;
-import com.yupi.springbootinit.model.enums.FileUploadBizEnum;
 import com.yupi.springbootinit.model.vo.BiResponse;
 import com.yupi.springbootinit.service.ChartService;
 import com.yupi.springbootinit.service.UserService;
@@ -41,6 +39,9 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.List;
 
+import static com.yupi.springbootinit.constant.FileConstant.FILE_MAX_SIZE;
+import static com.yupi.springbootinit.constant.FileConstant.VALID_FILE_SUFFIX;
+
 /**
  * 帖子接口
  *
@@ -54,13 +55,14 @@ public class ChartController {
 
     @Resource
     private ChartService chartService;
-
     @Resource
     private UserService userService;
     @Resource
     private CosManager cosManager;
     @Resource
     private AiManager aiManager;
+    @Resource
+    private RedisLimiterManager redisLimiterManager;
 
     private final static Gson GSON = new Gson();
 
@@ -231,7 +233,7 @@ public class ChartController {
 
 
     /**
-     * 文件上传
+     * AI生成图表结论
      *
      * @param multipartFile
      * @param genChartByAiRequest
@@ -249,23 +251,36 @@ public class ChartController {
         // 2. 校验目标和名称
         ThrowUtils.throwIf(StringUtils.isBlank(goal), ErrorCode.PARAMS_ERROR,"目标为空");
         ThrowUtils.throwIf(StringUtils.isNotBlank(name)&&name.length()>100,ErrorCode.PARAMS_ERROR,"名称过长");
+        // 校验文件
+        long fileSize = multipartFile.getSize();
+        String originalFilename = multipartFile.getOriginalFilename();
+            // 校验文件大小
+        ThrowUtils.throwIf(fileSize > FILE_MAX_SIZE, ErrorCode.PARAMS_ERROR, "文件大小超过 1M");
+            // 校验文件后缀
+        String suffix = FileUtil.getSuffix(originalFilename);
+        ThrowUtils.throwIf(!VALID_FILE_SUFFIX.contains(suffix), ErrorCode.PARAMS_ERROR, "不支持该类型文件");
 
-        // 3. 构造用户输入
+        // 3. 限流处理
+        User loginUser = userService.getLoginUser(request);
+        Long userId = loginUser.getId();
+        redisLimiterManager.doRateLimit("genChartByAi_"+userId);
+
+        // 4. 构造用户输入
         StringBuilder userInput = new StringBuilder();
-            //3.1 需求：目标 或 目标+类型
+            // 4.1 需求：目标 或 目标+类型
         userInput.append("分析需求：").append("\n");
         String userGoal=goal;
         if(StringUtils.isNotBlank(chartType)){
             userGoal+="，请使用"+chartType;
         }
         userInput.append(userGoal).append("\n");
-            // 3.2 原始数据
+            // 4.2 原始数据
         userInput.append("原始数据：").append("\n");
-            // 3.3 转csv，数据提取和压缩
+            // 4.3 转csv，数据提取和压缩
         String csvData = ExcelUtils.excelToCsv(multipartFile);
         userInput.append(csvData).append("\n");
 
-        // 4. 调用AI
+        // 5. 调用AI
         long BIModelId = 1774721525321445378L;
         String chatResult = aiManager.doChat(BIModelId,userInput.toString());
         String[] split = chatResult.split("【【【【【");
@@ -273,23 +288,22 @@ public class ChartController {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR,"AI 生成错误");
         }
 
-        // 5. 处理响应结果，将图表信息保存到数据库
+        // 6. 处理响应结果，将图表信息保存到数据库
         String genChart = split[1].trim();
         String genResult = split[2].trim();
-        String validGenChart = ChartUtils.getValidGenChart(genChart);
-        User loginUser = userService.getLoginUser(request);
+//        String validGenChart = ChartUtils.getValidGenChart(genChart);
         Chart chart = new Chart();
         chart.setName(name);
         chart.setGoal(goal);
         chart.setChartData(csvData);
         chart.setChartType(chartType);
-        chart.setGenChart(validGenChart);
+        chart.setGenChart(genChart);
         chart.setGetResult(genResult);
-        chart.setUserId(loginUser.getId());
+        chart.setUserId(userId);
         boolean saveReslt = chartService.save(chart);
         ThrowUtils.throwIf(!saveReslt,ErrorCode.SYSTEM_ERROR,"图表保存失败");
 
-        // 6. 将图表结果返回前端
+        // 7. 将图表结果返回前端
         BiResponse biResponse = new BiResponse();
         biResponse.setGenChart(genChart);
         biResponse.setGenResult(genResult);

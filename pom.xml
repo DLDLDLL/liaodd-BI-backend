@@ -101,6 +101,12 @@
             <artifactId>yucongming-java-sdk</artifactId>
             <version>0.0.3</version>
         </dependency>
+<!--        redisson限流-->
+        <dependency>
+            <groupId>org.redisson</groupId>
+            <artifactId>redisson</artifactId>
+            <version>3.27.2</version>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-devtools</artifactId>
