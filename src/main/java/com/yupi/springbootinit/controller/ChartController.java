@@ -59,10 +59,6 @@ public class ChartController {
     private UserService userService;
     @Resource
     private CosManager cosManager;
-    @Resource
-    private AiManager aiManager;
-    @Resource
-    private RedisLimiterManager redisLimiterManager;
 
     private final static Gson GSON = new Gson();
 
@@ -233,7 +229,7 @@ public class ChartController {
 
 
     /**
-     * AI生成图表结论
+     * 同步AI生成图表结论
      *
      * @param multipartFile
      * @param genChartByAiRequest
@@ -243,70 +239,22 @@ public class ChartController {
     @PostMapping("/gen")
     public BaseResponse<BiResponse> genChartByAi(@RequestPart("file") MultipartFile multipartFile,
                                              GenChartByAiRequest genChartByAiRequest, HttpServletRequest request) {
-        // 1. 获取参数
-        String name = genChartByAiRequest.getName();
-        String goal = genChartByAiRequest.getGoal();
-        String chartType = genChartByAiRequest.getChartType();
+        BiResponse biResponse = chartService.genChartByAi(multipartFile, genChartByAiRequest, request);
+        return ResultUtils.success(biResponse);
+    }
 
-        // 2. 校验目标和名称
-        ThrowUtils.throwIf(StringUtils.isBlank(goal), ErrorCode.PARAMS_ERROR,"目标为空");
-        ThrowUtils.throwIf(StringUtils.isNotBlank(name)&&name.length()>100,ErrorCode.PARAMS_ERROR,"名称过长");
-        // 校验文件
-        long fileSize = multipartFile.getSize();
-        String originalFilename = multipartFile.getOriginalFilename();
-            // 校验文件大小
-        ThrowUtils.throwIf(fileSize > FILE_MAX_SIZE, ErrorCode.PARAMS_ERROR, "文件大小超过 1M");
-            // 校验文件后缀
-        String suffix = FileUtil.getSuffix(originalFilename);
-        ThrowUtils.throwIf(!VALID_FILE_SUFFIX.contains(suffix), ErrorCode.PARAMS_ERROR, "不支持该类型文件");
-
-        // 3. 限流处理
-        User loginUser = userService.getLoginUser(request);
-        Long userId = loginUser.getId();
-        redisLimiterManager.doRateLimit("genChartByAi_"+userId);
-
-        // 4. 构造用户输入
-        StringBuilder userInput = new StringBuilder();
-            // 4.1 需求：目标 或 目标+类型
-        userInput.append("分析需求：").append("\n");
-        String userGoal=goal;
-        if(StringUtils.isNotBlank(chartType)){
-            userGoal+="，请使用"+chartType;
-        }
-        userInput.append(userGoal).append("\n");
-            // 4.2 原始数据
-        userInput.append("原始数据：").append("\n");
-            // 4.3 转csv，数据提取和压缩
-        String csvData = ExcelUtils.excelToCsv(multipartFile);
-        userInput.append(csvData).append("\n");
-
-        // 5. 调用AI
-        long BIModelId = 1774721525321445378L;
-        String chatResult = aiManager.doChat(BIModelId,userInput.toString());
-        String[] split = chatResult.split("【【【【【");
-        if(split.length<3){
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR,"AI 生成错误");
-        }
-
-        // 6. 处理响应结果，将图表信息保存到数据库
-        String genChart = split[1].trim();
-        String genResult = split[2].trim();
-//        String validGenChart = ChartUtils.getValidGenChart(genChart);
-        Chart chart = new Chart();
-        chart.setName(name);
-        chart.setGoal(goal);
-        chart.setChartData(csvData);
-        chart.setChartType(chartType);
-        chart.setGenChart(genChart);
-        chart.setGetResult(genResult);
-        chart.setUserId(userId);
-        boolean saveReslt = chartService.save(chart);
-        ThrowUtils.throwIf(!saveReslt,ErrorCode.SYSTEM_ERROR,"图表保存失败");
-
-        // 7. 将图表结果返回前端
-        BiResponse biResponse = new BiResponse();
-        biResponse.setGenChart(genChart);
-        biResponse.setGenResult(genResult);
+    /**
+     * 异步AI生成图表结论
+     *
+     * @param multipartFile
+     * @param genChartByAiRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/gen/async")
+    public BaseResponse<BiResponse> genChartByAiAsync(@RequestPart("file") MultipartFile multipartFile,
+                                                 GenChartByAiRequest genChartByAiRequest, HttpServletRequest request) {
+        BiResponse biResponse = chartService.genChartByAiAsync(multipartFile, genChartByAiRequest, request);
         return ResultUtils.success(biResponse);
     }
 

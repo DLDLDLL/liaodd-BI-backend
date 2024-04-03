@@ -21,7 +21,6 @@ spring:
     username: root
     password: 159166
   # Redis 配置
-  # todo 需替换配置，然后取消注释
   redis:
     database: 1
     host: localhost
