@@ -13,6 +13,7 @@ import com.yupi.springbootinit.model.entity.Chart;
 import com.yupi.springbootinit.model.entity.User;
 import com.yupi.springbootinit.model.enums.ChartStatusEnum;
 import com.yupi.springbootinit.model.vo.BiResponse;
+import com.yupi.springbootinit.mq.BIMessageProducer;
 import com.yupi.springbootinit.service.ChartService;
 import com.yupi.springbootinit.mapper.ChartMapper;
 import com.yupi.springbootinit.service.UserService;
@@ -47,6 +48,8 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
     private AiManager aiManager;
     @Resource
     private ThreadPoolExecutor threadPoolExecutor;
+    @Resource
+    private BIMessageProducer biMessageProducer;
 
     /**
      * AI生成图表（同步）
@@ -166,7 +169,6 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
 
         // 6.提交任务：调用AI,生成响应结果,更新数据库
         CompletableFuture.runAsync(() -> {
-            System.out.println("runnuing");
             // ① 更新状态为running
             Chart statusChart = new Chart();
             statusChart.setId(chart.getId());
@@ -206,6 +208,63 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
     }
 
     /**
+     * AI生成图表（消息队列异步）
+     * @param multipartFile
+     * @param genChartByAiRequest
+     * @param request
+     * @return
+     */
+    public BiResponse genChartByAiAsyncMq(MultipartFile multipartFile, GenChartByAiRequest genChartByAiRequest, HttpServletRequest request) {
+        // 1. 获取参数
+        String name = genChartByAiRequest.getName();
+        String goal = genChartByAiRequest.getGoal();
+        String chartType = genChartByAiRequest.getChartType();
+
+        // 2. 校验参数
+        checkInput(multipartFile, name, goal);
+
+        // 3. 限流处理
+        User loginUser = userService.getLoginUser(request);
+        Long userId = loginUser.getId();
+        redisLimiterManager.doRateLimit("genChartByAi_" + userId);
+
+        // 4. 构造用户输入
+        StringBuilder userInput = new StringBuilder();
+        // 4.1 需求：目标 或 目标+类型
+        userInput.append("分析需求：").append("\n");
+        String userGoal = goal;
+        if (StringUtils.isNotBlank(chartType)) {
+            userGoal += "，请使用" + chartType;
+        }
+        userInput.append(userGoal).append("\n");
+        // 4.2 原始数据
+        userInput.append("原始数据：").append("\n");
+        // 4.3 转csv，数据提取和压缩
+        String csvData = ExcelUtils.excelToCsv(multipartFile);
+        userInput.append(csvData).append("\n");
+
+        // 5. 先插入到数据库（除了生成的图表和结论）
+        Chart chart = new Chart();
+        chart.setName(name);
+        chart.setGoal(goal);
+        chart.setChartData(csvData);
+        chart.setChartType(chartType);
+        chart.setUserId(userId);
+        chart.setChartStatus(ChartStatusEnum.WAIT.getValue());
+        boolean saveResult = save(chart);
+        ThrowUtils.throwIf(!saveResult, ErrorCode.SYSTEM_ERROR, "图表保存失败");
+
+        // 6.发送到消息队列：调用AI,生成响应结果,更新数据库
+        biMessageProducer.sendMessage(String.valueOf(chart.getId()));
+
+        // 7. 将响应结果返回给前端
+        BiResponse biResponse = new BiResponse();
+        biResponse.setChartId(chart.getId());
+        return biResponse;
+    }
+
+
+    /**
      * 校验输入的参数
      * @param multipartFile
      * @param name
@@ -230,7 +289,7 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
      * @param chartId
      * @param execMessage
      */
-    private void handleChartUpdateError(Long chartId,String execMessage){
+    public void handleChartUpdateError(Long chartId,String execMessage){
         Chart chart = new Chart();
         chart.setId(chartId);
         chart.setChartStatus(ChartStatusEnum.FAILED.getValue());
@@ -240,6 +299,8 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
             log.error("更新图表失败状态失败"+chartId+","+execMessage);
         }
     }
+
+
 }
 
 

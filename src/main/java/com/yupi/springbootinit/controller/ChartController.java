@@ -42,6 +42,7 @@ import java.util.List;
 import static com.yupi.springbootinit.constant.FileConstant.FILE_MAX_SIZE;
 import static com.yupi.springbootinit.constant.FileConstant.VALID_FILE_SUFFIX;
 
+
 /**
  * 帖子接口
  *
@@ -52,6 +53,7 @@ import static com.yupi.springbootinit.constant.FileConstant.VALID_FILE_SUFFIX;
 @RequestMapping("/chart")
 @Slf4j
 public class ChartController {
+    String s="1";
 
     @Resource
     private ChartService chartService;
@@ -60,7 +62,6 @@ public class ChartController {
     @Resource
     private CosManager cosManager;
 
-    private final static Gson GSON = new Gson();
 
     // region 增删改查
 
@@ -255,6 +256,21 @@ public class ChartController {
     public BaseResponse<BiResponse> genChartByAiAsync(@RequestPart("file") MultipartFile multipartFile,
                                                  GenChartByAiRequest genChartByAiRequest, HttpServletRequest request) {
         BiResponse biResponse = chartService.genChartByAiAsync(multipartFile, genChartByAiRequest, request);
+        return ResultUtils.success(biResponse);
+    }
+
+    /**
+     * 消息队列异步AI生成图表结论
+     *
+     * @param multipartFile
+     * @param genChartByAiRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/gen/async/mq")
+    public BaseResponse<BiResponse> genChartByAiAsyncMq(@RequestPart("file") MultipartFile multipartFile,
+                                                      GenChartByAiRequest genChartByAiRequest, HttpServletRequest request) {
+        BiResponse biResponse = chartService.genChartByAiAsyncMq(multipartFile, genChartByAiRequest, request);
         return ResultUtils.success(biResponse);
     }
 
