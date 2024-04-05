@@ -14,6 +14,7 @@ import com.yupi.springbootinit.model.entity.User;
 import com.yupi.springbootinit.model.enums.ChartStatusEnum;
 import com.yupi.springbootinit.model.vo.BiResponse;
 import com.yupi.springbootinit.mq.BIMessageProducer;
+import com.yupi.springbootinit.service.AiFrequencyService;
 import com.yupi.springbootinit.service.ChartService;
 import com.yupi.springbootinit.mapper.ChartMapper;
 import com.yupi.springbootinit.service.UserService;
@@ -30,6 +31,8 @@ import java.util.concurrent.ThreadPoolExecutor;
 
 import static com.yupi.springbootinit.constant.FileConstant.FILE_MAX_SIZE;
 import static com.yupi.springbootinit.constant.FileConstant.VALID_FILE_SUFFIX;
+import static com.yupi.springbootinit.utils.ChartUtils.genDefaultChartName;
+import static com.yupi.springbootinit.utils.ChartUtils.getValidGenChart;
 
 /**
  * @author D
@@ -50,6 +53,8 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
     private ThreadPoolExecutor threadPoolExecutor;
     @Resource
     private BIMessageProducer biMessageProducer;
+    @Resource
+    private AiFrequencyService aiFrequencyService;
 
     /**
      * AI生成图表（同步）
@@ -65,13 +70,20 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
         String name = genChartByAiRequest.getName();
         String goal = genChartByAiRequest.getGoal();
         String chartType = genChartByAiRequest.getChartType();
+        if(StringUtils.isBlank(name)){
+            name=genDefaultChartName();
+        }
+
+        // 查询是否有查询次数
+        User loginUser = userService.getLoginUser(request);
+        Long userId = loginUser.getId();
+        boolean hasFrequency = aiFrequencyService.hasFrequency(userId);
+        ThrowUtils.throwIf(!hasFrequency,ErrorCode.PARAMS_ERROR, "剩余次数不足，请先充值！");
 
         // 2. 校验参数
         checkInput(multipartFile, name, goal);
 
         // 3. 限流处理
-        User loginUser = userService.getLoginUser(request);
-        Long userId = loginUser.getId();
         redisLimiterManager.doRateLimit("genChartByAi_" + userId);
 
         // 4. 构造用户输入
@@ -116,12 +128,16 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
         BiResponse biResponse = new BiResponse();
         biResponse.setGenChart(genChart);
         biResponse.setGenResult(genResult);
+
+        // 调用次数-1
+        boolean invokeAutoDecrease = aiFrequencyService.invokeAutoDecrease(loginUser.getId());
+        ThrowUtils.throwIf(!invokeAutoDecrease, ErrorCode.PARAMS_ERROR, "次数减一失败");
+
         return biResponse;
     }
 
     /**
      * AI生成图表（异步）
-     *
      * @param multipartFile
      * @param genChartByAiRequest
      * @param request
@@ -132,13 +148,21 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
         String name = genChartByAiRequest.getName();
         String goal = genChartByAiRequest.getGoal();
         String chartType = genChartByAiRequest.getChartType();
+        if(StringUtils.isBlank(name)){
+            name=genDefaultChartName();
+        }
+
+        // 查询是否有查询次数
+        User loginUser = userService.getLoginUser(request);
+        Long userId = loginUser.getId();
+        boolean hasFrequency = aiFrequencyService.hasFrequency(userId);
+        ThrowUtils.throwIf(!hasFrequency,ErrorCode.PARAMS_ERROR, "剩余次数不足，请先充值！");
+
 
         // 2. 校验参数
         checkInput(multipartFile, name, goal);
 
         // 3. 限流处理
-        User loginUser = userService.getLoginUser(request);
-        Long userId = loginUser.getId();
         redisLimiterManager.doRateLimit("genChartByAi_" + userId);
 
         // 4. 构造用户输入
@@ -204,6 +228,11 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
         // 7. 将响应结果返回给前端
         BiResponse biResponse = new BiResponse();
         biResponse.setChartId(chart.getId());
+
+        // 调用次数-1
+        boolean invokeAutoDecrease = aiFrequencyService.invokeAutoDecrease(loginUser.getId());
+        ThrowUtils.throwIf(!invokeAutoDecrease, ErrorCode.PARAMS_ERROR, "次数减一失败");
+
         return biResponse;
     }
 
@@ -219,29 +248,23 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
         String name = genChartByAiRequest.getName();
         String goal = genChartByAiRequest.getGoal();
         String chartType = genChartByAiRequest.getChartType();
+        if(StringUtils.isBlank(name)){
+            name=genDefaultChartName();
+        }
+        // 查询是否有查询次数
+        User loginUser = userService.getLoginUser(request);
+        Long userId = loginUser.getId();
+        boolean hasFrequency = aiFrequencyService.hasFrequency(userId);
+        ThrowUtils.throwIf(!hasFrequency,ErrorCode.PARAMS_ERROR, "剩余次数不足，请先充值！");
 
         // 2. 校验参数
         checkInput(multipartFile, name, goal);
 
         // 3. 限流处理
-        User loginUser = userService.getLoginUser(request);
-        Long userId = loginUser.getId();
         redisLimiterManager.doRateLimit("genChartByAi_" + userId);
 
-        // 4. 构造用户输入
-        StringBuilder userInput = new StringBuilder();
-        // 4.1 需求：目标 或 目标+类型
-        userInput.append("分析需求：").append("\n");
-        String userGoal = goal;
-        if (StringUtils.isNotBlank(chartType)) {
-            userGoal += "，请使用" + chartType;
-        }
-        userInput.append(userGoal).append("\n");
-        // 4.2 原始数据
-        userInput.append("原始数据：").append("\n");
-        // 4.3 转csv，数据提取和压缩
+        // 4. 转csv，数据提取和压缩
         String csvData = ExcelUtils.excelToCsv(multipartFile);
-        userInput.append(csvData).append("\n");
 
         // 5. 先插入到数据库（除了生成的图表和结论）
         Chart chart = new Chart();
@@ -260,6 +283,10 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
         // 7. 将响应结果返回给前端
         BiResponse biResponse = new BiResponse();
         biResponse.setChartId(chart.getId());
+
+        // 调用次数-1
+        boolean invokeAutoDecrease = aiFrequencyService.invokeAutoDecrease(loginUser.getId());
+        ThrowUtils.throwIf(!invokeAutoDecrease, ErrorCode.PARAMS_ERROR, "次数减一失败");
         return biResponse;
     }
 

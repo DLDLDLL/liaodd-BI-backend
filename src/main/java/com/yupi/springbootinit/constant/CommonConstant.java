@@ -22,4 +22,9 @@ public interface CommonConstant {
      * AI模型ID
      */
     long BI_Model_ID = 1774721525321445378L;
+
+    /**
+     * 用户默认调用次数
+     */
+    int TOTAL_FREQUENCY = 10;
 }

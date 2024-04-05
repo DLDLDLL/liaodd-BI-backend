@@ -16,9 +16,11 @@ import com.yupi.springbootinit.model.dto.user.UserQueryRequest;
 import com.yupi.springbootinit.model.dto.user.UserRegisterRequest;
 import com.yupi.springbootinit.model.dto.user.UserUpdateMyRequest;
 import com.yupi.springbootinit.model.dto.user.UserUpdateRequest;
+import com.yupi.springbootinit.model.entity.AiFrequency;
 import com.yupi.springbootinit.model.entity.User;
 import com.yupi.springbootinit.model.vo.LoginUserVO;
 import com.yupi.springbootinit.model.vo.UserVO;
+import com.yupi.springbootinit.service.AiFrequencyService;
 import com.yupi.springbootinit.service.UserService;
 import java.util.List;
 import javax.annotation.Resource;
@@ -37,6 +39,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import static com.yupi.springbootinit.constant.CommonConstant.TOTAL_FREQUENCY;
+
 /**
  * 用户接口
  *
@@ -52,7 +56,7 @@ public class UserController {
     private UserService userService;
 
     @Resource
-    private WxOpenConfig wxOpenConfig;
+    private AiFrequencyService aiFrequencyService;
 
     // region 登录相关
 
@@ -74,6 +78,14 @@ public class UserController {
             return null;
         }
         long result = userService.userRegister(userAccount, userPassword, checkPassword);
+
+        // 初始化调用次数
+        AiFrequency aiFrequency = new AiFrequency();
+        aiFrequency.setTotalFrequency(TOTAL_FREQUENCY);
+        aiFrequency.setRemainFrequency(TOTAL_FREQUENCY);
+        aiFrequency.setUserId(result);
+        aiFrequencyService.save(aiFrequency);
+
         return ResultUtils.success(result);
     }
 

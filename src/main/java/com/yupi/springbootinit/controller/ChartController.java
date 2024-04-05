@@ -53,14 +53,11 @@ import static com.yupi.springbootinit.constant.FileConstant.VALID_FILE_SUFFIX;
 @RequestMapping("/chart")
 @Slf4j
 public class ChartController {
-    String s="1";
 
     @Resource
     private ChartService chartService;
     @Resource
     private UserService userService;
-    @Resource
-    private CosManager cosManager;
 
 
     // region 增删改查

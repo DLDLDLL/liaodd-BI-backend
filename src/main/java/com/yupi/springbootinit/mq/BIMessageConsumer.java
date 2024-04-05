@@ -95,6 +95,7 @@ public class BIMessageConsumer {
             // 更新状态为fail
             chartService.handleChartUpdateError(chartId, "更新图表成功状态失败");
         }
+
         // 成功，确认消息
         channel.basicAck(deliveryTag,false);
     }
