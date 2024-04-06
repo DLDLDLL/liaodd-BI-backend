@@ -2,12 +2,14 @@ package com.yupi.springbootinit.service;
 
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.yupi.springbootinit.model.dto.chart.ChartQueryRequest;
 import com.yupi.springbootinit.model.dto.chart.GenChartByAiRequest;
 import com.yupi.springbootinit.model.entity.Chart;
 import com.yupi.springbootinit.model.vo.BiResponse;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.List;
 
 /**
 * @author D
@@ -24,4 +26,8 @@ public interface ChartService extends IService<Chart> {
     BiResponse genChartByAiAsyncMq(MultipartFile multipartFile, GenChartByAiRequest genChartByAiRequest, HttpServletRequest request);
 
     void handleChartUpdateError(Long chartId, String execMessage);
+
+    Chart getChartByIdCache(long id, HttpServletRequest request);
+
+    List<Chart> listChartByCache(HttpServletRequest request);
 }

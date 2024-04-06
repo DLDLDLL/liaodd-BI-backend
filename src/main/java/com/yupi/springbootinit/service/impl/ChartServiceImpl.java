@@ -1,13 +1,15 @@
 package com.yupi.springbootinit.service.impl;
 
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.json.JSONUtil;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.yupi.springbootinit.common.ErrorCode;
-import com.yupi.springbootinit.common.ResultUtils;
 import com.yupi.springbootinit.exception.BusinessException;
 import com.yupi.springbootinit.exception.ThrowUtils;
 import com.yupi.springbootinit.manager.AiManager;
 import com.yupi.springbootinit.manager.RedisLimiterManager;
+import com.yupi.springbootinit.model.dto.chart.ChartQueryRequest;
 import com.yupi.springbootinit.model.dto.chart.GenChartByAiRequest;
 import com.yupi.springbootinit.model.entity.Chart;
 import com.yupi.springbootinit.model.entity.User;
@@ -20,19 +22,22 @@ import com.yupi.springbootinit.mapper.ChartMapper;
 import com.yupi.springbootinit.service.UserService;
 import com.yupi.springbootinit.utils.ExcelUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import static com.yupi.springbootinit.constant.FileConstant.FILE_MAX_SIZE;
 import static com.yupi.springbootinit.constant.FileConstant.VALID_FILE_SUFFIX;
+import static com.yupi.springbootinit.constant.RedisConstant.*;
 import static com.yupi.springbootinit.utils.ChartUtils.genDefaultChartName;
-import static com.yupi.springbootinit.utils.ChartUtils.getValidGenChart;
 
 /**
  * @author D
@@ -55,6 +60,8 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
     private BIMessageProducer biMessageProducer;
     @Resource
     private AiFrequencyService aiFrequencyService;
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
 
     /**
      * AI生成图表（同步）
@@ -325,6 +332,55 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
         if(!updateResult){
             log.error("更新图表失败状态失败"+chartId+","+execMessage);
         }
+    }
+
+    /**
+     * 根据id获取图表（缓存）
+     * @param id
+     * @param request
+     * @return
+     */
+    @Override
+    public Chart getChartByIdCache(long id, HttpServletRequest request) {
+        if (id <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        // 从缓存中获取
+        String chartKey=CHART_ID_KEY+id;
+        String chartStr = stringRedisTemplate.opsForValue().get(chartKey);
+        // 缓存命中，直接返回
+        if(StringUtils.isNotBlank(chartStr)){
+            return JSONUtil.toBean(chartStr,Chart.class);
+        }
+        // 未命中，从数据库获取并存入缓存
+        Chart chart = getById(id);
+        if (chart == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
+        }
+        stringRedisTemplate.opsForValue().set(chartKey,JSONUtil.toJsonStr(chart),CHART_TTL, TimeUnit.MINUTES);
+        return chart;
+    }
+
+    /**
+     * 列表获取图表（缓存）
+     *
+     * @return
+     */
+    @Override
+    public List<Chart> listChartByCache(HttpServletRequest request) {
+        // 查询缓存
+        String liststr=stringRedisTemplate.opsForValue().get(CHART_LIST_KEY);
+        if(StringUtils.isNotBlank(liststr)){
+            return JSONUtil.toList(liststr,Chart.class);
+        }
+        //未命中
+        User loginUser = userService.getLoginUser(request);
+        QueryWrapper<Chart> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("userId",loginUser.getId());
+        List<Chart> chartList = list(queryWrapper);
+        ThrowUtils.throwIf(chartList==null,ErrorCode.NOT_FOUND_ERROR,"查询图标失败");
+        stringRedisTemplate.opsForValue().set(CHART_LIST_KEY,JSONUtil.toJsonStr(chartList),CHART_LIST_TTL,TimeUnit.MINUTES);
+        return chartList;
     }
 
 

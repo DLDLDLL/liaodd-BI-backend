@@ -30,6 +30,7 @@ import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -41,10 +42,11 @@ import java.util.List;
 
 import static com.yupi.springbootinit.constant.FileConstant.FILE_MAX_SIZE;
 import static com.yupi.springbootinit.constant.FileConstant.VALID_FILE_SUFFIX;
+import static com.yupi.springbootinit.constant.RedisConstant.CHART_ID_KEY;
 
 
 /**
- * 帖子接口
+ * 图表接口
  *
  * @author <a href="https://github.com/liyupi">程序员鱼皮</a>
  * @from <a href="https://yupi.icu">编程导航知识星球</a>
@@ -58,6 +60,8 @@ public class ChartController {
     private ChartService chartService;
     @Resource
     private UserService userService;
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
 
 
     // region 增删改查
@@ -151,7 +155,6 @@ public class ChartController {
         return ResultUtils.success(chart);
     }
 
-
     /**
      * 分页获取列表（封装类）
      *
@@ -169,6 +172,28 @@ public class ChartController {
         Page<Chart> chartPage = chartService.page(new Page<>(current, size),
                 getQueryWrapper(chartQueryRequest));
         return ResultUtils.success(chartPage);
+    }
+
+    /**
+     * 根据 id 获取（缓存）
+     *
+     * @param id
+     * @return
+     */
+    @GetMapping("/get/cache")
+    public BaseResponse<Chart> getChartByIdCache(long id, HttpServletRequest request) {
+        Chart chart=chartService.getChartByIdCache(id, request);
+        return ResultUtils.success(chart);
+    }
+    /**
+     * 分页获取列表（封装类）（缓存）
+     *
+     * @return
+     */
+    @PostMapping("/list/cache")
+    public BaseResponse<List<Chart>> listChartByCache(HttpServletRequest request) {
+        List<Chart> list=chartService.listChartByCache(request);
+        return ResultUtils.success(list);
     }
 
     /**
@@ -222,6 +247,7 @@ public class ChartController {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
         boolean result = chartService.updateById(chart);
+        stringRedisTemplate.delete(CHART_ID_KEY+chart.getId());
         return ResultUtils.success(result);
     }
 
