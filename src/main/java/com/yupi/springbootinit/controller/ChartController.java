@@ -1,6 +1,7 @@
 package com.yupi.springbootinit.controller;
 
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.google.gson.Gson;
@@ -39,10 +40,11 @@ import javax.servlet.http.HttpServletRequest;
 import java.io.File;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static com.yupi.springbootinit.constant.FileConstant.FILE_MAX_SIZE;
 import static com.yupi.springbootinit.constant.FileConstant.VALID_FILE_SUFFIX;
-import static com.yupi.springbootinit.constant.RedisConstant.CHART_ID_KEY;
+import static com.yupi.springbootinit.constant.RedisConstant.*;
 
 
 /**
@@ -191,9 +193,32 @@ public class ChartController {
      * @return
      */
     @PostMapping("/list/cache")
-    public BaseResponse<List<Chart>> listChartByCache(HttpServletRequest request) {
-        List<Chart> list=chartService.listChartByCache(request);
-        return ResultUtils.success(list);
+    public BaseResponse<Page<Chart>> listChartByCache(@RequestBody ChartQueryRequest chartQueryRequest,
+                                                      HttpServletRequest request) {
+        ThrowUtils.throwIf(chartQueryRequest == null,ErrorCode.PARAMS_ERROR);
+
+        User loginUser = userService.getLoginUser(request);
+        chartQueryRequest.setUserId(loginUser.getId());
+
+        long current = chartQueryRequest.getCurrent();
+        long size = chartQueryRequest.getPageSize();
+        // 限制爬虫
+        ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
+
+        String cacheKey = CHART_PAGE_KEY + chartQueryRequest.getId();
+        String pagestr = stringRedisTemplate.opsForValue().get(cacheKey);
+        if (StringUtils.isNotBlank(pagestr)) {
+            // 如果缓存中有结果，则直接返回缓存的结果
+            Page<Chart> chartpage = JSONUtil.toBean(pagestr, Page.class);
+            return ResultUtils.success(chartpage);
+        }
+
+        // 如果缓存中没有结果，则查询数据库
+        Page<Chart> chartPage = chartService.page(new Page<>(current, size),
+                getQueryWrapper(chartQueryRequest));
+        // 将查询结果放入缓存
+        stringRedisTemplate.opsForValue().set(cacheKey,JSONUtil.toJsonStr(chartPage),CHART_PAGE_TTL, TimeUnit.MINUTES);
+        return ResultUtils.success(chartPage);
     }
 
     /**

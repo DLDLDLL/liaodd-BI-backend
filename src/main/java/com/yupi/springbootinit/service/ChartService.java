@@ -1,6 +1,7 @@
 package com.yupi.springbootinit.service;
 
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.yupi.springbootinit.model.dto.chart.ChartQueryRequest;
 import com.yupi.springbootinit.model.dto.chart.GenChartByAiRequest;
@@ -29,5 +30,4 @@ public interface ChartService extends IService<Chart> {
 
     Chart getChartByIdCache(long id, HttpServletRequest request);
 
-    List<Chart> listChartByCache(HttpServletRequest request);
 }
