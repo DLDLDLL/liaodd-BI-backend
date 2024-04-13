@@ -293,7 +293,7 @@ public class ChartController {
     }
 
     /**
-     * 异步AI生成图表结论
+     * 线程池异步AI生成图表结论
      *
      * @param multipartFile
      * @param genChartByAiRequest

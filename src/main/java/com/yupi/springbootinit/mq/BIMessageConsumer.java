@@ -11,10 +11,8 @@ import com.yupi.springbootinit.service.ChartService;
 import com.yupi.springbootinit.utils.ExcelUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.amqp.core.ExchangeTypes;
-import org.springframework.amqp.rabbit.annotation.Exchange;
-import org.springframework.amqp.rabbit.annotation.Queue;
-import org.springframework.amqp.rabbit.annotation.QueueBinding;
-import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.core.QueueBuilder;
+import org.springframework.amqp.rabbit.annotation.*;
 import org.springframework.amqp.support.AmqpHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
@@ -37,14 +35,10 @@ public class BIMessageConsumer {
     // binds:
     // 声明队列: 名称、可持久化
     // 声明交换机: 名称、类型为默认direct
-    // 使用key 绑定队列和交换机
+    // 使用key 绑定正常队列和交换机
     // ackMode:
     // 设置为手动确认
-    @RabbitListener(bindings = @QueueBinding(
-            value = @Queue(value = BIMqConstant.BI_QUEUE_NAME, durable = "true"),
-            exchange = @Exchange(value = BIMqConstant.BI_EXCHANGE_NAME),
-            key = BIMqConstant.BI_ROUTING_KEY
-    ), ackMode = "MANUAL")
+    @RabbitListener(queues = BIMqConstant.BI_QUEUE_NAME,ackMode = "MANUAL")
     public void receiveMessage(String message, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
         // 消息为空则拒绝
         if(StringUtils.isBlank(message)){

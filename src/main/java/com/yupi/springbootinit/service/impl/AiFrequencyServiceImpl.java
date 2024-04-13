@@ -8,7 +8,12 @@ import com.yupi.springbootinit.exception.ThrowUtils;
 import com.yupi.springbootinit.model.entity.AiFrequency;
 import com.yupi.springbootinit.service.AiFrequencyService;
 import com.yupi.springbootinit.mapper.AiFrequencyMapper;
+import org.redisson.Redisson;
+import org.redisson.api.RedissonClient;
+import org.redisson.client.RedisClient;
 import org.springframework.stereotype.Service;
+
+import java.util.HashMap;
 
 /**
 * @author D
