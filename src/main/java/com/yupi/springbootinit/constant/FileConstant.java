@@ -12,12 +12,6 @@ import java.util.List;
 public interface FileConstant {
 
     /**
-     * COS 访问地址
-     * todo 需替换配置
-     */
-    String COS_HOST = "https://yupi.icu";
-
-    /**
      * 文件大小不能超过1M
      */
     long FILE_MAX_SIZE=1 * 1024 * 1024L;
