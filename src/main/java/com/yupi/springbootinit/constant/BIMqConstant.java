@@ -1,6 +1,5 @@
 package com.yupi.springbootinit.constant;
 
-import org.checkerframework.checker.signedness.qual.Unsigned;
 
 public interface BIMqConstant {
     String BI_EXCHANGE_NAME="bi.chart.exchange";

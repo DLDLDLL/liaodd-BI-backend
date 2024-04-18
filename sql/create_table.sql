@@ -50,3 +50,5 @@ create table if not exists ai_frequency
     updateTime      datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
     isDelete        tinyint  default 0                 not null comment '是否删除'
 ) comment 'ai调用次数表' collate = utf8mb4_unicode_ci;
+
+insert into `user` (`id`, `userAccount`, `userPassword`, `userName`, `userAvatar`, `userRole`, `createTime`, `updateTime`, `isDelete`) values('1677329879382142977','testuser','9710c945062180c8f53e61c5e6523594','嗨嗨嗨','	https://himg.bdimg.com/sys/portrait/item/pp.1.f8935f85.Doze4zaABPc92wxH3z_JNA?_t=1684462904344','user','2023-05-18 10:23:35','2023-05-19 10:22:13','0');
