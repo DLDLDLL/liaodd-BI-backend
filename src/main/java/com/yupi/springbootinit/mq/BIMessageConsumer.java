@@ -9,6 +9,7 @@ import com.yupi.springbootinit.model.entity.Chart;
 import com.yupi.springbootinit.model.enums.ChartStatusEnum;
 import com.yupi.springbootinit.service.ChartService;
 import com.yupi.springbootinit.utils.ExcelUtils;
+import com.yupi.springbootinit.websocket.WebSocketServer;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.amqp.core.ExchangeTypes;
 import org.springframework.amqp.core.QueueBuilder;
@@ -19,6 +20,8 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashSet;
 
 import static com.yupi.springbootinit.constant.CommonConstant.BI_Model_ID;
 
@@ -31,6 +34,8 @@ public class BIMessageConsumer {
     ChartService chartService;
     @Resource
     AiManager aiManager;
+    @Resource
+    WebSocketServer webSocketServer;
 
     // binds:
     // 声明队列: 名称、可持久化
@@ -89,7 +94,9 @@ public class BIMessageConsumer {
             // 更新状态为fail
             chartService.handleChartUpdateError(chartId, "更新图表成功状态失败");
         }
-
+        // 推送消息
+        webSocketServer.sendMessage("您的[" + chart.getName() + "]生成成功, 前往 我的图表 进行查看",
+                new HashSet<>(Arrays.asList(chart.getUserId().toString())));
         // 成功，确认消息
         channel.basicAck(deliveryTag,false);
     }

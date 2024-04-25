@@ -1,28 +1,62 @@
-server:
-  port: 8101
 spring:
+  application:
+    name: liaodd-backend
+  # 默认 dev 环境
+  profiles:
+    active: dev
+  # 支持 swagger3
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
+  # session 配置
+  session:
+    # todo 取消注释开启分布式 session（须先配置 Redis）
+    # store-type: redis
+    # 30 天过期
+    timeout: 2592000
   # 数据库配置
-  # todo 需替换配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/my_db
-    username: root
-    password: 123456
+    url: jdbc:mysql://47.120.7.12:3306/liaodd_bi
+    username: lds
+    password: 159166
   # Redis 配置
-  # todo 需替换配置
   redis:
     database: 1
-    host: localhost
+    host: 47.120.7.12
     port: 6379
     timeout: 5000
-    password: 123456
-  # Elasticsearch 配置
-  # todo 需替换配置
-  elasticsearch:
-    uris: http://localhost:9200
-    username: root
-    password: 123456
+    password: 159166
+  # 文件上传
+  servlet:
+    multipart:
+      # 大小限制
+      max-file-size: 10MB
+  # rabbitmq配置
+  rabbitmq:
+    host: 47.120.7.12
+    port: 5672
+    username: lds
+    password: 159166
+server:
+  address: 0.0.0.0
+  port: 8101
+  servlet:
+    context-path: /api
+    # cookie 30 天过期
+    session:
+      cookie:
+        max-age: 2592000
 mybatis-plus:
   configuration:
-    # 生产环境关闭日志
-    log-impl: ''
+    map-underscore-to-camel-case: false
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: isDelete # 全局逻辑删除的实体字段名
+      logic-delete-value: 1 # 逻辑已删除值（默认为 1）
+      logic-not-delete-value: 0 # 逻辑未删除值（默认为 0）
+yuapi:
+  client:
+    access-key: nhp159yfjmd9oo1c0763kvdbogqxfv6n
+    secret-key: s2albqquqpw9vrqrxp1n5tlcfct8vx99

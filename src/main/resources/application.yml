@@ -17,13 +17,13 @@ spring:
   # 数据库配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://47.120.7.12:3306/liaodd_bi
-    username: lds
+    url: jdbc:mysql://localhost:3306/liaodd_bi
+    username: root
     password: 159166
   # Redis 配置
   redis:
     database: 1
-    host: 47.120.7.12
+    host: localhost
     port: 6379
     timeout: 5000
     password: 159166
@@ -34,10 +34,11 @@ spring:
       max-file-size: 10MB
   # rabbitmq配置
   rabbitmq:
-    host: 47.120.7.12
+    host: localhost
     port: 5672
     username: lds
     password: 159166
+    virtual-host: /liaodd_bi
 server:
   address: 0.0.0.0
   port: 8101

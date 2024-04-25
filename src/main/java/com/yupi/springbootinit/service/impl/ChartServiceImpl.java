@@ -22,6 +22,7 @@ import com.yupi.springbootinit.service.ChartService;
 import com.yupi.springbootinit.mapper.ChartMapper;
 import com.yupi.springbootinit.service.UserService;
 import com.yupi.springbootinit.utils.ExcelUtils;
+import com.yupi.springbootinit.websocket.WebSocketServer;
 import org.apache.commons.lang3.StringUtils;
 import org.redisson.api.RMap;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -31,6 +32,9 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -63,6 +67,8 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
     private AiFrequencyService aiFrequencyService;
     @Resource
     private StringRedisTemplate stringRedisTemplate;
+    @Resource
+    private WebSocketServer webSocketServer;
 
     /**
      * AI生成图表（同步）
@@ -231,6 +237,13 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
             if(!updateResult){
                 handleChartUpdateError(chart.getId(),"更新图表成功状态失败");
             }
+            // 推送消息
+            try {
+                webSocketServer.sendMessage("您的[" + chart.getName() + "]生成成功 , 前往 我的图表 进行查看",
+                        new HashSet<>(Arrays.asList(chart.getUserId().toString())));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         },threadPoolExecutor);
 
         // 7. 将响应结果返回给前端
@@ -295,6 +308,7 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
         // 调用次数-1
         boolean invokeAutoDecrease = aiFrequencyService.invokeAutoDecrease(loginUser.getId());
         ThrowUtils.throwIf(!invokeAutoDecrease, ErrorCode.PARAMS_ERROR, "次数减一失败");
+
         return biResponse;
     }
 
