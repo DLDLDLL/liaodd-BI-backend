@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.yupi.springbootinit.common.ErrorCode;
 import com.yupi.springbootinit.common.ResultUtils;
+import com.yupi.springbootinit.constant.ChartConstant;
 import com.yupi.springbootinit.exception.BusinessException;
 import com.yupi.springbootinit.exception.ThrowUtils;
 import com.yupi.springbootinit.manager.AiManager;
@@ -84,15 +85,15 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
         String name = genChartByAiRequest.getName();
         String goal = genChartByAiRequest.getGoal();
         String chartType = genChartByAiRequest.getChartType();
-        if(StringUtils.isBlank(name)){
-            name=genDefaultChartName();
+        if (StringUtils.isBlank(name)) {
+            name = genDefaultChartName();
         }
 
         // 查询是否有查询次数
         User loginUser = userService.getLoginUser(request);
         Long userId = loginUser.getId();
         boolean hasFrequency = aiFrequencyService.hasFrequency(userId);
-        ThrowUtils.throwIf(!hasFrequency,ErrorCode.PARAMS_ERROR, "剩余次数不足，请先充值！");
+        ThrowUtils.throwIf(!hasFrequency, ErrorCode.PARAMS_ERROR, "剩余次数不足，请先充值！");
 
         // 2. 校验参数
         checkInput(multipartFile, name, goal);
@@ -135,6 +136,7 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
         chart.setGenChart(genChart);
         chart.setGetResult(genResult);
         chart.setUserId(userId);
+        chart.setChartStatus(ChartStatusEnum.SUCCEED.getValue());
         boolean saveReslt = save(chart);
         ThrowUtils.throwIf(!saveReslt, ErrorCode.SYSTEM_ERROR, "图表保存失败");
 
@@ -152,6 +154,7 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
 
     /**
      * AI生成图表（异步）
+     *
      * @param multipartFile
      * @param genChartByAiRequest
      * @param request
@@ -162,15 +165,15 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
         String name = genChartByAiRequest.getName();
         String goal = genChartByAiRequest.getGoal();
         String chartType = genChartByAiRequest.getChartType();
-        if(StringUtils.isBlank(name)){
-            name=genDefaultChartName();
+        if (StringUtils.isBlank(name)) {
+            name = genDefaultChartName();
         }
 
         // 查询是否有查询次数
         User loginUser = userService.getLoginUser(request);
         Long userId = loginUser.getId();
         boolean hasFrequency = aiFrequencyService.hasFrequency(userId);
-        ThrowUtils.throwIf(!hasFrequency,ErrorCode.PARAMS_ERROR, "剩余次数不足，请先充值！");
+        ThrowUtils.throwIf(!hasFrequency, ErrorCode.PARAMS_ERROR, "剩余次数不足，请先充值！");
 
 
         // 2. 校验参数
@@ -212,8 +215,8 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
             statusChart.setId(chart.getId());
             statusChart.setChartStatus(ChartStatusEnum.RUNNING.getValue());
             boolean statusResult = updateById(statusChart);
-            if(!statusResult){
-                handleChartUpdateError(chart.getId(),"更新图表运行中状态失败");
+            if (!statusResult) {
+                handleChartUpdateError(chart.getId(), "更新图表运行中状态失败");
                 return;
             }
             // ② 调用AI,获取响应结果
@@ -222,7 +225,7 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
             String[] split = chatResult.split("【【【【【");
             if (split.length < 3) {
 //                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI 生成错误");
-                handleChartUpdateError(chart.getId(),"AI 生成错误");
+                handleChartUpdateError(chart.getId(), "AI 生成错误");
                 return;
             }
             String genChart = split[1].trim();
@@ -234,8 +237,8 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
             updateChart.setGetResult(genResult);
             updateChart.setChartStatus(ChartStatusEnum.SUCCEED.getValue());
             boolean updateResult = updateById(updateChart);
-            if(!updateResult){
-                handleChartUpdateError(chart.getId(),"更新图表成功状态失败");
+            if (!updateResult) {
+                handleChartUpdateError(chart.getId(), "更新图表成功状态失败");
             }
             // 推送消息
             try {
@@ -244,7 +247,7 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-        },threadPoolExecutor);
+        }, threadPoolExecutor);
 
         // 7. 将响应结果返回给前端
         BiResponse biResponse = new BiResponse();
@@ -259,6 +262,7 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
 
     /**
      * AI生成图表（消息队列异步）
+     *
      * @param multipartFile
      * @param genChartByAiRequest
      * @param request
@@ -269,14 +273,14 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
         String name = genChartByAiRequest.getName();
         String goal = genChartByAiRequest.getGoal();
         String chartType = genChartByAiRequest.getChartType();
-        if(StringUtils.isBlank(name)){
-            name=genDefaultChartName();
+        if (StringUtils.isBlank(name)) {
+            name = genDefaultChartName();
         }
         // 查询是否有查询次数
         User loginUser = userService.getLoginUser(request);
         Long userId = loginUser.getId();
         boolean hasFrequency = aiFrequencyService.hasFrequency(userId);
-        ThrowUtils.throwIf(!hasFrequency,ErrorCode.PARAMS_ERROR, "剩余次数不足，请先充值！");
+        ThrowUtils.throwIf(!hasFrequency, ErrorCode.PARAMS_ERROR, "剩余次数不足，请先充值！");
 
         // 2. 校验参数
         checkInput(multipartFile, name, goal);
@@ -315,6 +319,7 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
 
     /**
      * 校验输入的参数
+     *
      * @param multipartFile
      * @param name
      * @param goal
@@ -335,22 +340,24 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
 
     /**
      * 处理图表更新失败，将状态设置为 fail
+     *
      * @param chartId
      * @param execMessage
      */
-    public void handleChartUpdateError(Long chartId,String execMessage){
+    public void handleChartUpdateError(Long chartId, String execMessage) {
         Chart chart = new Chart();
         chart.setId(chartId);
         chart.setChartStatus(ChartStatusEnum.FAILED.getValue());
         chart.setExecMessage(execMessage);
         boolean updateResult = updateById(chart);
-        if(!updateResult){
-            log.error("更新图表失败状态失败"+chartId+","+execMessage);
+        if (!updateResult) {
+            log.error("更新图表失败状态失败" + chartId + "," + execMessage);
         }
     }
 
     /**
      * 根据id获取图表（缓存）
+     *
      * @param id
      * @param request
      * @return
@@ -361,18 +368,18 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         // 从缓存中获取
-        String chartKey=CHART_ID_KEY+id;
+        String chartKey = CHART_ID_KEY + id;
         String chartStr = stringRedisTemplate.opsForValue().get(chartKey);
         // 缓存命中，直接返回
-        if(StringUtils.isNotBlank(chartStr)){
-            return JSONUtil.toBean(chartStr,Chart.class);
+        if (StringUtils.isNotBlank(chartStr)) {
+            return JSONUtil.toBean(chartStr, Chart.class);
         }
         // 未命中，从数据库获取并存入缓存
         Chart chart = getById(id);
         if (chart == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
         }
-        stringRedisTemplate.opsForValue().set(chartKey,JSONUtil.toJsonStr(chart),CHART_TTL, TimeUnit.MINUTES);
+        stringRedisTemplate.opsForValue().set(chartKey, JSONUtil.toJsonStr(chart), CHART_TTL, TimeUnit.MINUTES);
         return chart;
     }
 
