@@ -11,6 +11,7 @@ import com.yupi.springbootinit.retry.GuavaRetrying;
 import com.yupi.springbootinit.service.ChartService;
 import com.yupi.springbootinit.utils.ExcelUtils;
 import com.yupi.springbootinit.websocket.WebSocketServer;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.amqp.core.ExchangeTypes;
 import org.springframework.amqp.core.QueueBuilder;
@@ -30,6 +31,7 @@ import static com.yupi.springbootinit.constant.CommonConstant.BI_Model_ID;
  * MQ消费者
  */
 @Component
+@Slf4j
 public class BIMessageConsumer {
     @Resource
     ChartService chartService;
@@ -65,19 +67,18 @@ public class BIMessageConsumer {
         statusChart.setId(chartId);
         statusChart.setChartStatus(ChartStatusEnum.RUNNING.getValue());
         Boolean statusResult = guavaRetrying.retryUpdateChart(statusChart);
-            // 更新失败
+        // 更新失败
         if (statusResult == null) {
-            // 拒绝消息
+            // 拒绝消息，进入死信队列标记失败
             channel.basicNack(deliveryTag, false, false);
-            // 更新状态为fail
-            chartService.handleChartUpdateError(chartId, "更新图表运行中状态失败");
+            log.error("更新图表 " + chartId + " \"运行中\"状态失败");
             return;
         }
         // ② 调用AI,获取响应结果（使用guava retry）
         String chatResult = guavaRetrying.retryDoChart(buildUserInput(chart));
         if (chatResult == null) { //生成失败，拒绝
             channel.basicNack(deliveryTag, false, false);
-            chartService.handleChartUpdateError(chartId, "AI 生成错误");
+            log.error("图表 " + chartId + " AI 生成错误");
             return;
         }
         String[] split = chatResult.split("【【【【【");
@@ -90,12 +91,11 @@ public class BIMessageConsumer {
         updateChart.setGetResult(genResult);
         updateChart.setChartStatus(ChartStatusEnum.SUCCEED.getValue());
         Boolean updateResult = guavaRetrying.retryUpdateChart(updateChart);
-            // 更新失败
+        // 更新失败
         if (updateResult == null) {
             // 拒绝消息
             channel.basicNack(deliveryTag, false, false);
-            // 更新状态为fail
-            chartService.handleChartUpdateError(chartId, "更新图表成功状态失败");
+            log.error("更新图表 " + chartId + " \"成功\"状态失败");
             return;
         }
 

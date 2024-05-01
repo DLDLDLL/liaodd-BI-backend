@@ -6,6 +6,7 @@ import com.yupi.springbootinit.constant.BIMqConstant;
 import com.yupi.springbootinit.exception.BusinessException;
 import com.yupi.springbootinit.model.entity.Chart;
 import com.yupi.springbootinit.model.enums.ChartStatusEnum;
+import com.yupi.springbootinit.retry.GuavaRetrying;
 import com.yupi.springbootinit.service.ChartService;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -23,6 +24,8 @@ import java.io.IOException;
 public class BIDeadConsumer {
     @Resource
     ChartService chartService;
+    @Resource
+    GuavaRetrying guavaRetrying;
 
     @RabbitListener(queues = BIMqConstant.BI_DEAD_QUEUE, ackMode = "MANUAL")
     public void receiveMessage(String message, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
@@ -45,10 +48,8 @@ public class BIDeadConsumer {
         boolean statusResult = chartService.updateById(statusChart);
         // 更新失败
         if (!statusResult) {
-            // 拒绝消息
-            channel.basicNack(deliveryTag, false, false);
-            // 更新状态为fail
-            chartService.handleChartUpdateError(chartId, "更新图表运行中状态失败");
+            // 拒绝消息，重新入队处理
+            channel.basicNack(deliveryTag, false, true);
             return;
         }
         // 成功，确认
