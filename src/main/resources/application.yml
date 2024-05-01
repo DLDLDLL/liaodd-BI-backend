@@ -8,6 +8,9 @@ spring:
   mvc:
     pathmatch:
       matching-strategy: ant_path_matcher
+  # 允许循环依赖
+  main:
+    allow-circular-references: true
   # session 配置
   session:
     # todo 取消注释开启分布式 session（须先配置 Redis）

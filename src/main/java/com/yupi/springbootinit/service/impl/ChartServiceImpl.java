@@ -18,6 +18,7 @@ import com.yupi.springbootinit.model.entity.User;
 import com.yupi.springbootinit.model.enums.ChartStatusEnum;
 import com.yupi.springbootinit.model.vo.BiResponse;
 import com.yupi.springbootinit.mq.BIMessageProducer;
+import com.yupi.springbootinit.retry.GuavaRetrying;
 import com.yupi.springbootinit.service.AiFrequencyService;
 import com.yupi.springbootinit.service.ChartService;
 import com.yupi.springbootinit.mapper.ChartMapper;
@@ -70,6 +71,8 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
     private StringRedisTemplate stringRedisTemplate;
     @Resource
     private WebSocketServer webSocketServer;
+    @Resource
+    private GuavaRetrying guavaRetrying;
 
     /**
      * AI生成图表（同步）
@@ -339,7 +342,7 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
     }
 
     /**
-     * 处理图表更新失败，将状态设置为 fail
+     * 处理图表更新失败，将状态设置为 fail（使用guava retry）
      *
      * @param chartId
      * @param execMessage
@@ -349,8 +352,8 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
         chart.setId(chartId);
         chart.setChartStatus(ChartStatusEnum.FAILED.getValue());
         chart.setExecMessage(execMessage);
-        boolean updateResult = updateById(chart);
-        if (!updateResult) {
+        Boolean updateResult = guavaRetrying.retryUpdateChart(chart);
+        if (updateResult==null) {
             log.error("更新图表失败状态失败" + chartId + "," + execMessage);
         }
     }

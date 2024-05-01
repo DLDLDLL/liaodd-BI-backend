@@ -56,7 +56,7 @@ public class BIMessageInit {
     }
 
     /**
-     * 绑定正常交换机和死信队列
+     * 绑定正常交换机和正常队列
      */
     @Bean
     Binding BiBinding(Queue BiQueue, DirectExchange BiExchange) {
