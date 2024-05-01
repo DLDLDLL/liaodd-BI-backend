@@ -30,4 +30,5 @@ public interface ChartService extends IService<Chart> {
 
     Chart getChartByIdCache(long id, HttpServletRequest request);
 
+    String buildUserInput(Chart chart);
 }

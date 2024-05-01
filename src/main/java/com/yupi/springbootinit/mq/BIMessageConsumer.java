@@ -75,7 +75,7 @@ public class BIMessageConsumer {
             return;
         }
         // ② 调用AI,获取响应结果（使用guava retry）
-        String chatResult = guavaRetrying.retryDoChart(buildUserInput(chart));
+        String chatResult = guavaRetrying.retryDoChart(chartService.buildUserInput(chart));
         if (chatResult == null) { //生成失败，拒绝
             channel.basicNack(deliveryTag, false, false);
             log.error("图表 " + chartId + " AI 生成错误");
@@ -104,31 +104,6 @@ public class BIMessageConsumer {
                 new HashSet<>(Arrays.asList(chart.getUserId().toString())));
         // 成功，确认消息
         channel.basicAck(deliveryTag, false);
-    }
-
-    /**
-     * 构造用户输入
-     *
-     * @param chart
-     * @return
-     */
-    private String buildUserInput(Chart chart) {
-        String userGoal = chart.getGoal();
-        String csvData = chart.getChartData();
-        String chartType = chart.getChartType();
-
-        // 1 需求：目标 或 目标+类型
-        StringBuilder userInput = new StringBuilder();
-        userInput.append("分析需求：").append("\n");
-        if (StringUtils.isNotBlank(chartType)) {
-            userGoal += "，请使用" + chartType;
-        }
-        userInput.append(userGoal).append("\n");
-        // 2 原始数据
-        userInput.append("原始数据：").append("\n");
-        userInput.append(csvData).append("\n");
-
-        return userInput.toString();
     }
 
 }

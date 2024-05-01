@@ -178,27 +178,14 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
         boolean hasFrequency = aiFrequencyService.hasFrequency(userId);
         ThrowUtils.throwIf(!hasFrequency, ErrorCode.PARAMS_ERROR, "剩余次数不足，请先充值！");
 
-
         // 2. 校验参数
         checkInput(multipartFile, name, goal);
 
         // 3. 限流处理
         redisLimiterManager.doRateLimit("genChartByAi_" + userId);
 
-        // 4. 构造用户输入
-        StringBuilder userInput = new StringBuilder();
-        // 4.1 需求：目标 或 目标+类型
-        userInput.append("分析需求：").append("\n");
-        String userGoal = goal;
-        if (StringUtils.isNotBlank(chartType)) {
-            userGoal += "，请使用" + chartType;
-        }
-        userInput.append(userGoal).append("\n");
-        // 4.2 原始数据
-        userInput.append("原始数据：").append("\n");
-        // 4.3 转csv，数据提取和压缩
+        // 4. 转csv，数据提取和压缩
         String csvData = ExcelUtils.excelToCsv(multipartFile);
-        userInput.append(csvData).append("\n");
 
         // 5. 先插入到数据库（除了生成的图表和结论）
         Chart chart = new Chart();
@@ -217,32 +204,35 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
             Chart statusChart = new Chart();
             statusChart.setId(chart.getId());
             statusChart.setChartStatus(ChartStatusEnum.RUNNING.getValue());
-            boolean statusResult = updateById(statusChart);
-            if (!statusResult) {
+            Boolean statusResult = guavaRetrying.retryUpdateChart(statusChart);
+            // 更新失败
+            if (statusResult == null) {
                 handleChartUpdateError(chart.getId(), "更新图表运行中状态失败");
                 return;
             }
             // ② 调用AI,获取响应结果
-            long BIModelId = 1774721525321445378L;
-            String chatResult = aiManager.doChat(BIModelId, userInput.toString());
-            String[] split = chatResult.split("【【【【【");
-            if (split.length < 3) {
-//                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI 生成错误");
+            String chatResult = guavaRetrying.retryDoChart(buildUserInput(chart));
+            if (chatResult == null) { //生成失败
                 handleChartUpdateError(chart.getId(), "AI 生成错误");
                 return;
             }
+            String[] split = chatResult.split("【【【【【");
             String genChart = split[1].trim();
             String genResult = split[2].trim();
+
             // ③ 更新数据库
             Chart updateChart = new Chart();
             updateChart.setId(chart.getId());
             updateChart.setGenChart(genChart);
             updateChart.setGetResult(genResult);
             updateChart.setChartStatus(ChartStatusEnum.SUCCEED.getValue());
-            boolean updateResult = updateById(updateChart);
-            if (!updateResult) {
+            Boolean updateResult = guavaRetrying.retryUpdateChart(updateChart);
+            // 更新失败
+            if (updateResult == null) {
                 handleChartUpdateError(chart.getId(), "更新图表成功状态失败");
+                return;
             }
+
             // 推送消息
             try {
                 webSocketServer.sendMessage("您的[" + chart.getName() + "]生成成功 , 前往 我的图表 进行查看",
@@ -348,6 +338,7 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
      * @param execMessage
      */
     public void handleChartUpdateError(Long chartId, String execMessage) {
+        log.error(execMessage + chartId);
         Chart chart = new Chart();
         chart.setId(chartId);
         chart.setChartStatus(ChartStatusEnum.FAILED.getValue());
@@ -384,6 +375,30 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart> implements
         }
         stringRedisTemplate.opsForValue().set(chartKey, JSONUtil.toJsonStr(chart), CHART_TTL, TimeUnit.MINUTES);
         return chart;
+    }
+
+    /**
+     * 构造用户输入
+     * @param chart
+     * @return
+     */
+    public String buildUserInput(Chart chart) {
+        String userGoal = chart.getGoal();
+        String csvData = chart.getChartData();
+        String chartType = chart.getChartType();
+
+        // 1 需求：目标 或 目标+类型
+        StringBuilder userInput = new StringBuilder();
+        userInput.append("分析需求：").append("\n");
+        if (StringUtils.isNotBlank(chartType)) {
+            userGoal += "，请使用" + chartType;
+        }
+        userInput.append(userGoal).append("\n");
+        // 2 原始数据
+        userInput.append("原始数据：").append("\n");
+        userInput.append(csvData).append("\n");
+
+        return userInput.toString();
     }
 
 }
