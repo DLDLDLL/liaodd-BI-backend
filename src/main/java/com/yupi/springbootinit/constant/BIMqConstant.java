@@ -12,4 +12,12 @@ public interface BIMqConstant {
     String BI_DEAD_ROUTING_KEY="bi.chart.dead.routingKey";
     String DEAD_LETTER_TTL="x-message-ttl";
     int BI_DEAD_TTL=120000;
+
+    String ORDER_DEAD_QUEUE = "bi.order.dead.queue";
+    String ORDER_DEAD_EXCHANGE = "bi.order.dead.exchange";
+    String ORDER_DEAD_ROUTING_KEY = "bi.order.dead.routingKey";
+    int ORDER_DEAD_TTL = 60 * 10 * 1000;
+    String ORDER_QUEUE_NAME = "bi.order.queue";
+    String ORDER_EXCHANGE_NAME = "bi.order.exchange";
+    String ORDER_ROUTING_KEY = "bi.order.routingKey";
 }

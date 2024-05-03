@@ -1,25 +1,18 @@
-package com.yupi.springbootinit.model.entity;
+package com.yupi.springbootinit.model.dto.order;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 import java.io.Serializable;
 import java.util.Date;
 
 /**
- * 次数订单表
- * @TableName ai_frequency_order
+ * 取消订单
  */
-@TableName(value ="ai_frequency_order")
 @Data
-public class AiFrequencyOrder implements Serializable {
+public class AiFrequencyOrderCancelRequest implements Serializable {
     /**
      * id
      */
-    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 
     /**
@@ -43,7 +36,7 @@ public class AiFrequencyOrder implements Serializable {
     private Double totalAmount;
 
     /**
-     * 交易状态【0->待付款；1->已完成；2->无效订单】
+     * 交易状态【0->待付款；1->已完成；2->无效订单,3->删除订单】
      */
     private Integer orderStatus;
 
@@ -57,11 +50,5 @@ public class AiFrequencyOrder implements Serializable {
      */
     private Date updateTime;
 
-    /**
-     * 是否删除
-     */
-    private Integer isDelete;
-
-    @TableField(exist = false)
     private static final long serialVersionUID = 1L;
 }

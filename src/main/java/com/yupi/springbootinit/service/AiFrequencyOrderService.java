@@ -1,7 +1,12 @@
 package com.yupi.springbootinit.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.yupi.springbootinit.model.dto.order.AiFrequencyOrderQueryRequest;
+import com.yupi.springbootinit.model.dto.order.AiFrequencyOrderUpdateRequest;
 import com.yupi.springbootinit.model.entity.AiFrequencyOrder;
+
+import javax.servlet.http.HttpServletRequest;
 
 /**
 * @author D
@@ -10,4 +15,7 @@ import com.yupi.springbootinit.model.entity.AiFrequencyOrder;
 */
 public interface AiFrequencyOrderService extends IService<AiFrequencyOrder> {
 
+    QueryWrapper<AiFrequencyOrder> getOrderQueryWrapper(AiFrequencyOrderQueryRequest orderQueryRequest);
+
+    boolean updateOrderInfo(AiFrequencyOrderUpdateRequest orderUpdateRequest, HttpServletRequest request);
 }

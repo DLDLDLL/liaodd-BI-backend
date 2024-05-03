@@ -4,7 +4,7 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.yupi.springbootinit.mapper.AlipayInfoMapper">
 
-    <resultMap id="BaseResultMap" type="generator1.domain.AlipayInfo">
+    <resultMap id="BaseResultMap" type="com.yupi.springbootinit.model.entity.AlipayInfo">
             <id property="id" column="id" jdbcType="BIGINT"/>
             <result property="userId" column="userId" jdbcType="BIGINT"/>
             <result property="alipayAccountNo" column="alipayAccountNo" jdbcType="BIGINT"/>
