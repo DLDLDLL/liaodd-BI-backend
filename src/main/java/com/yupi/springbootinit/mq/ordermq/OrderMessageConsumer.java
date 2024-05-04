@@ -11,6 +11,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.support.AmqpHeaders;
 import org.springframework.messaging.handler.annotation.Header;
+import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
 import java.io.IOException;
@@ -18,6 +19,7 @@ import java.io.IOException;
 /**
  * 订单死信队列
  */
+@Component
 public class OrderMessageConsumer {
     @Resource
     AiFrequencyOrderService aiFrequencyOrderService;

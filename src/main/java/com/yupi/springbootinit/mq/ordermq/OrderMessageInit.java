@@ -31,7 +31,7 @@ public class OrderMessageInit {
      * 绑定死信交换机和死信队列
      */
     @Bean
-    Binding BiDeadBinding(Queue OrderDeadQueue, DirectExchange OrderDeadExchange) {
+    Binding OrderDeadBinding(Queue OrderDeadQueue, DirectExchange OrderDeadExchange) {
         return BindingBuilder.bind(OrderDeadQueue).to(OrderDeadExchange).with(BIMqConstant.ORDER_DEAD_ROUTING_KEY);
     }
 
@@ -40,7 +40,7 @@ public class OrderMessageInit {
      * 同时正常队列跟死信交换机绑定
      */
     @Bean
-    Queue BiQueue() {
+    Queue OrderQueue() {
         //信息参数 设置TTL为10min
         Map<String, Object> arg = new HashMap<>();
         arg.put(BIMqConstant.DEAD_LETTER_TTL, BIMqConstant.ORDER_DEAD_TTL);
@@ -51,7 +51,7 @@ public class OrderMessageInit {
     }
 
     @Bean
-    DirectExchange BiExchange() {
+    DirectExchange OrderExchange() {
         return new DirectExchange(BIMqConstant.ORDER_EXCHANGE_NAME);
     }
 
@@ -59,7 +59,7 @@ public class OrderMessageInit {
      * 绑定正常交换机和正常队列
      */
     @Bean
-    Binding BiBinding(Queue BiQueue, DirectExchange BiExchange) {
+    Binding OrderBinding(Queue BiQueue, DirectExchange BiExchange) {
         return BindingBuilder.bind(BiQueue).to(BiExchange).with(BIMqConstant.ORDER_ROUTING_KEY);
     }
 }
