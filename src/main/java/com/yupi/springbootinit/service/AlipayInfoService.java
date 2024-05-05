@@ -10,4 +10,5 @@ import com.yupi.springbootinit.model.entity.AlipayInfo;
 */
 public interface AlipayInfoService extends IService<AlipayInfo> {
 
+    long getPayNo(long orderId, long userId);
 }

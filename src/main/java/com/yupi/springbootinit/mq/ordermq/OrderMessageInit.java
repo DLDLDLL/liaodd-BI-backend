@@ -59,7 +59,7 @@ public class OrderMessageInit {
      * 绑定正常交换机和正常队列
      */
     @Bean
-    Binding OrderBinding(Queue BiQueue, DirectExchange BiExchange) {
-        return BindingBuilder.bind(BiQueue).to(BiExchange).with(BIMqConstant.ORDER_ROUTING_KEY);
+    Binding OrderBinding(Queue OrderQueue, DirectExchange OrderExchange) {
+        return BindingBuilder.bind(OrderQueue).to(OrderExchange).with(BIMqConstant.ORDER_ROUTING_KEY);
     }
 }

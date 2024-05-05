@@ -24,6 +24,8 @@ import com.yupi.springbootinit.service.UserService;
 import java.util.List;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+
+import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
@@ -288,6 +290,27 @@ public class UserController {
         User user = new User();
         BeanUtils.copyProperties(userUpdateMyRequest, user);
         user.setId(loginUser.getId());
+        boolean result = userService.updateById(user);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        return ResultUtils.success(true);
+    }
+
+    /**
+     * 用户更新信息
+     *
+     * @param userUpdateRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/update/user")
+    @ApiOperation(value = "更新用户信息")
+    public BaseResponse<Boolean> updateByProfileUser(@RequestBody UserUpdateRequest userUpdateRequest,
+                                                     HttpServletRequest request) {
+        if (userUpdateRequest == null || userUpdateRequest.getId() == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User user = new User();
+        BeanUtils.copyProperties(userUpdateRequest, user);
         boolean result = userService.updateById(user);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(true);

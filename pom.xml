@@ -95,6 +95,11 @@
             <artifactId>hutool-all</artifactId>
             <version>5.8.8</version>
         </dependency>
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>fastjson</artifactId>
+            <version>1.2.7</version>
+        </dependency>
         <!--        AI接口-->
         <dependency>
             <groupId>com.yucongming</groupId>
@@ -123,6 +128,24 @@
             <groupId>com.github.rholder</groupId>
             <artifactId>guava-retrying</artifactId>
             <version>2.0.0</version>
+        </dependency>
+        <!-- 二维码生成&识别组件 -->
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>core</artifactId>
+            <version>3.3.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>javase</artifactId>
+            <version>3.3.3</version>
+        </dependency>
+
+        <!-- 支付宝SDK -->
+        <dependency>
+            <groupId>com.alipay.sdk</groupId>
+            <artifactId>alipay-sdk-java</artifactId>
+            <version>4.34.0.ALL</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

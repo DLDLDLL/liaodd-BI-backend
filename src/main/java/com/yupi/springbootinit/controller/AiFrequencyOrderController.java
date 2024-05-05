@@ -63,7 +63,7 @@ public class AiFrequencyOrderController {
 
         // 保存订单信息
         Long userId = loginUser.getId();
-        double totalAmount = userId * price;
+        double totalAmount = total * price;
         AiFrequencyOrder aiFrequencyOrder = new AiFrequencyOrder();
         aiFrequencyOrder.setUserId(userId);
         aiFrequencyOrder.setPrice(price); //单价
