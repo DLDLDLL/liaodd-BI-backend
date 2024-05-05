@@ -34,7 +34,7 @@ public class OrderMessageDeadConsumer {
         AiFrequencyOrder aiFrequencyOrder = aiFrequencyOrderService.getById(id);
         Integer status = aiFrequencyOrder.getOrderStatus();
         // 还未支付，更新订单状态
-        if (!status.equals(Integer.valueOf(PayOrderEnum.COMPLETE.getValue()))) {
+        if (status.equals(Integer.valueOf(PayOrderEnum.WAIT_PAY.getValue()))) {
             aiFrequencyOrder.setOrderStatus(Integer.valueOf(PayOrderEnum.TIMEOUT_ORDER.getValue()));
             boolean update = aiFrequencyOrderService.updateById(aiFrequencyOrder);
             if (!update) {
