@@ -122,7 +122,7 @@ public class AliPayInfoController {
                 .eq(ObjectUtils.isNotEmpty(userId), "userId", userId)
                 .eq(ObjectUtils.isNotEmpty(orderId), "orderId", orderId)
                 .eq("isDelete", false)
-                .orderBy(SqlUtils.validSortField(sortField), sortOrder.equals(CommonConstant.SORT_ORDER_DESC), sortField);
+                .orderBy(SqlUtils.validSortField(sortField), sortOrder.equals(CommonConstant.SORT_ORDER_ASC), sortField);
         return queryWrapper;
     }
 }

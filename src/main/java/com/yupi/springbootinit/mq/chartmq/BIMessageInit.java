@@ -1,4 +1,4 @@
-package com.yupi.springbootinit.mq;
+package com.yupi.springbootinit.mq.chartmq;
 
 import com.yupi.springbootinit.constant.BIMqConstant;
 import org.springframework.amqp.core.*;

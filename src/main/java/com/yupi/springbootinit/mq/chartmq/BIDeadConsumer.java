@@ -1,4 +1,4 @@
-package com.yupi.springbootinit.mq;
+package com.yupi.springbootinit.mq.chartmq;
 
 import com.rabbitmq.client.Channel;
 import com.yupi.springbootinit.common.ErrorCode;
