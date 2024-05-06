@@ -1,7 +1,10 @@
 package com.yupi.springbootinit.mapper;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.yupi.springbootinit.model.entity.Chart;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import org.apache.ibatis.annotations.MapKey;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 import java.util.Map;
@@ -13,7 +16,12 @@ import java.util.Map;
 * @Entity generator.domain.Chart
 */
 public interface ChartMapper extends BaseMapper<Chart> {
+    @MapKey(value = "id")
     List<Map<String,Object>> queryChartData(String querySql);
+
+    List<Chart> selectByPage(@Param("userId") Long userId,@Param("offset")long offset,@Param("size")long size);
+
+    long selectTotal(@Param("userId") Long userId);
 }
 
 

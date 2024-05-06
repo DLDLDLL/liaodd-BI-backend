@@ -61,13 +61,16 @@ public class AliPayController {
     public static String CHARSET = "UTF-8";
     public static String SIGNTYPE = "RSA2";
 
-    @Value("${pay.alipay.APP_ID}")
+    @Value("${pay.alipay.app-id}")
     String APP_ID;
-    @Value("${pay.alipay.APP_PRIVATE_KEY}")
+    @Value("${pay.alipay.app-private-key}")
     String APP_PRIVATE_KEY;
-
-    @Value("${pay.alipay.ALIPAY_PUBLIC_KEY}")
+    @Value("${pay.alipay.alipay-public-key}")
     String ALIPAY_PUBLIC_KEY;
+    @Value("${pay.er.url}")
+    String ER_URL;
+    @Value("${pay.alipay.notify-url}")
+    String NOTIFY_URL;
 
 
     /**
@@ -90,7 +93,7 @@ public class AliPayController {
 //        long alipayAccountNo = alipayInfoService.getPayNo(orderId, loginUser.getId());
 //        String url = String.format("http://192.168.32.1:8101/api/alipay/pay?alipayAccountNo=%s", alipayAccountNo);
         // 生成二维码调用支付接口
-        String url = String.format("http://8cwxq3.natappfree.cc/api/alipay/pay?orderId=%s&userId=%s", orderId, loginUser.getId());
+        String url = String.format(ER_URL, orderId, loginUser.getId());
         String generateQrCode = QrCodeUtil.generateAsBase64(url, new QrConfig(400, 400), "png");
         AlipayInfoVO alipayInfoVO = new AlipayInfoVO();
 //        alipayInfoVO.setAlipayAccountNo(String.valueOf(alipayAccountNo));
@@ -128,7 +131,7 @@ public class AliPayController {
         // 2、创建一个支付请求
         AlipayTradeWapPayRequest aliPayRequest = new AlipayTradeWapPayRequest();
         // 异步通知的地址
-        aliPayRequest.setNotifyUrl(String.format("http://8cwxq3.natappfree.cc/api/alipay/tradeQuery?alipayAccountNo=%s", alipayAccountNo));
+        aliPayRequest.setNotifyUrl(String.format(NOTIFY_URL, alipayAccountNo));
         JSONObject bizContent = new JSONObject();
         AlipayInfo alipayInfo = getAlipayInfoByAccount(String.valueOf(alipayAccountNo));
         // 商户订单号，商户网站订单系统中唯一订单号，必填。 支付宝流水帐号？？

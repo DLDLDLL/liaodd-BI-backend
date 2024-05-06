@@ -32,4 +32,17 @@
 
 <!--    查询具体图表-->
     <select id="queryChartData" resultType="java.util.Map">${queryChartSql}</select>
+
+<!--    分页查询优化-->
+    <select id="selectByPage" resultType="com.yupi.springbootinit.model.entity.Chart">
+        SELECT * FROM chart a inner join (SELECT id
+                                          FROM chart
+                                          WHERE userId = #{userId} and isDelete = 0
+                                          order by createTime DESC
+                                          LIMIT #{offset} , #{size}
+        ) b on a.id=b.id;
+    </select>
+    <select id="selectTotal" resultType="long">
+        SELECT COUNT(*) AS total FROM chart WHERE isDelete = 0 AND userId = #{userId};
+    </select>
 </mapper>

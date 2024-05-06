@@ -14,6 +14,7 @@ import com.yupi.springbootinit.constant.CommonConstant;
 import com.yupi.springbootinit.constant.UserConstant;
 import com.yupi.springbootinit.exception.BusinessException;
 import com.yupi.springbootinit.exception.ThrowUtils;
+import com.yupi.springbootinit.mapper.ChartMapper;
 import com.yupi.springbootinit.model.dto.chart.*;
 import com.yupi.springbootinit.model.entity.Chart;
 import com.yupi.springbootinit.model.entity.User;
@@ -31,6 +32,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static com.yupi.springbootinit.constant.RedisConstant.*;
@@ -53,6 +55,8 @@ public class ChartController {
     private UserService userService;
     @Resource
     private StringRedisTemplate stringRedisTemplate;
+    @Resource
+    private ChartMapper chartMapper;
 
 
     // region 增删改查
@@ -228,10 +232,17 @@ public class ChartController {
         long current = chartQueryRequest.getCurrent();
         long size = chartQueryRequest.getPageSize();
         // 限制爬虫
-        ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
-        Page<Chart> chartPage = chartService.page(new Page<>(current, size),
-                getQueryWrapper(chartQueryRequest));
-        return ResultUtils.success(chartPage);
+//        ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
+//        Page<Chart> chartPage = chartService.page(new Page<>(current, size),
+//                getQueryWrapper(chartQueryRequest));
+//        return ResultUtils.success(chartPage);
+        long offset=(current-1)*size;
+        List<Chart> charts = chartMapper.selectByPage(loginUser.getId(), offset, size);
+        long total = chartMapper.selectTotal(loginUser.getId());
+        Page<Chart> page = new Page<>(current,size);
+        page.setRecords(charts);
+        page.setTotal(total);
+        return ResultUtils.success(page);
     }
 
     // endregion
