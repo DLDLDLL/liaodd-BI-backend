@@ -59,7 +59,7 @@ public class GuavaRetrying {
                 .withRetryListener(new MyRetryListener()) // 添加自定义的重试监听器
                 .build();
 
-        // 重试方法：重新调用AI生成
+        // 定义重试方法：重新调用AI生成
         Callable<String> doChat = () -> {
             return aiManager.doChat(BI_Model_ID, userInput);
         };

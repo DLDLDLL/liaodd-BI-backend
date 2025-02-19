@@ -23,6 +23,7 @@ public class ExcelUtils {
      */
     public static String excelToCsv(MultipartFile multipartFile) {
         // 1. 读取excel数据 list
+        // map每行数据，Integer 列号，String 对应的列数据
         List<Map<Integer, String>> list = null;
         try {
             list = EasyExcel.read(multipartFile.getInputStream())
